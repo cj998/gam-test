@@ -73,7 +73,8 @@ function show(name) {
 
 /* ── 시작 ────────────────────────────────────────── */
 async function boot() {
-  INDEX = await (await fetch("topics.json")).json();
+  // 브라우저가 예전 목록을 캐시에서 꺼내면 새 주제·탭이 안 보인다. 늘 서버에 확인한다
+  INDEX = await (await fetch("topics.json", { cache: "no-cache" })).json();
   $("title").textContent = INDEX.title;
   $("subtitle").textContent = INDEX.subtitle;
 
@@ -142,7 +143,7 @@ function renderGrid() {
 }
 
 async function start(id) {
-  PACK = await (await fetch(`topics/${id}.json`)).json();
+  PACK = await (await fetch(`topics/${id}.json`, { cache: "no-cache" })).json();
   idx = 0; answers = [];
   $("topic-name").textContent = `${PACK.emoji} ${PACK.title}`;
   renderQ();

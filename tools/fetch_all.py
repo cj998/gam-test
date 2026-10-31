@@ -85,6 +85,18 @@ SOURCES: list[tuple[str, str, str]] = [
      "SP.POP.TOTL;SP.POP.65UP.TO.ZS;SP.URB.TOTL.IN.ZS"
      "?format=json&per_page=2000&source=2"),
 
+    # 콜레스테롤은 **기간만 서버에서 거른다** (csvType=filtered&tab=table&time=…).
+    # 이 차트는 country 를 줘도 나라가 걸러지지 않아(2026-10 확인) 전세계가 그대로 온다.
+    ("chol_non_hdl.csv",
+     "평균 non-HDL 콜레스테롤 1990~ 연령표준화 (Our World in Data · NCD-RisC)",
+     "https://ourworldindata.org/grapher/average-non-hdl-cholesterol-levels.csv"
+     "?csvType=filtered&tab=table&time=1990..2019&useColumnShortNames=true"),
+
+    ("chol_hdl.csv",
+     "평균 HDL 콜레스테롤 1990~ 연령표준화 (Our World in Data · NCD-RisC)",
+     "https://ourworldindata.org/grapher/good-cholesterol-levels-age-standardized.csv"
+     "?csvType=filtered&tab=table&time=1990..2019&useColumnShortNames=true"),
+
     ("wb_internet.json",
      "인터넷 사용률 전세계 (World Bank IT.NET.USER.ZS)",
      "https://api.worldbank.org/v2/country/all/indicator/IT.NET.USER.ZS"

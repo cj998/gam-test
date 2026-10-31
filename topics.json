@@ -65,8 +65,7 @@
     },
     {
       "id": "health",
-      "name": "건강",
-      "soon": true
+      "name": "건강"
     }
   ],
   "topics": [
@@ -157,6 +156,14 @@
       "blurb": "1990년부터 2024년까지, 서울의 하루 강설량",
       "source": "Open-Meteo Archive (ERA5 재분석)",
       "tab": "env"
+    },
+    {
+      "id": "cholesterol",
+      "emoji": "🩸",
+      "title": "콜레스테롤, 한국은 어디쯤",
+      "blurb": "1990~2018년, 나라별 성인 평균 콜레스테롤",
+      "source": "Our World in Data (NCD-RisC 추정)",
+      "tab": "health"
     }
   ]
 }

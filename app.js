@@ -33,14 +33,19 @@ function markDone(id, score) {
  * 택1     맞으면 100, 틀리면 0
  * 슬라이더 오차율 × 200 만큼 깎는다 (10% 빗나가면 80점)
  */
+/* 오차를 무엇에 견줄까. 보통은 정답의 크기, scale: "range" 면 슬라이더 폭.
+   변화량처럼 정답이 0 가까이 있으면 정답의 크기로 나눈 오차가 터무니없이 커진다 */
+function errBase(q) {
+  return q.scale === "range" ? q.max - q.min : Math.abs(q.answer);
+}
 function scoreOne(q, mine) {
   if (q.type === "choice") return mine === q.answer ? 100 : 0;
-  const err = Math.abs(mine - q.answer) / Math.abs(q.answer);
+  const err = Math.abs(mine - q.answer) / errBase(q);
   return Math.max(0, Math.round(100 - err * 200));
 }
 function errPct(q, mine) {
   if (q.type === "choice") return mine === q.answer ? 0 : 100;
-  return Math.abs(mine - q.answer) / Math.abs(q.answer) * 100;
+  return Math.abs(mine - q.answer) / errBase(q) * 100;
 }
 function gradeOf(s) {
   return INDEX.grades.find((g) => s >= g.min) || INDEX.grades.at(-1);
@@ -61,7 +66,7 @@ function josa(w) {
 /* Gemini 에게는 숫자가 아니라 방향만 보낸다 */
 function directionOf(q, mine) {
   if (q.type === "choice") return mine === q.answer ? "맞힘" : "틀림";
-  const d = (mine - q.answer) / Math.abs(q.answer);
+  const d = (mine - q.answer) / errBase(q);
   if (Math.abs(d) <= 0.08) return "비슷";
   return d > 0 ? "높게" : "낮게";
 }

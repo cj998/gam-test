@@ -89,10 +89,15 @@ def topic(tid, emoji, title, blurb, source, source_url, questions, caveat=""):
                    "caveat": caveat, "questions": questions})
 
 
-def slider(qid, text, answer, unit, lo, hi, step, basis, why):
-    return {"id": qid, "type": "slider", "text": text, "unit": unit,
-            "min": lo, "max": hi, "step": step,
-            "answer": round(float(answer), 1), "basis": basis, "why": why}
+def slider(qid, text, answer, unit, lo, hi, step, basis, why, scale=None):
+    """scale="range" = 오차를 정답이 아니라 슬라이더 폭에 견줘 채점한다.
+    변화량처럼 정답이 0 가까이 있는 문항에 쓴다 (app.js errBase)."""
+    q = {"id": qid, "type": "slider", "text": text, "unit": unit,
+         "min": lo, "max": hi, "step": step,
+         "answer": round(float(answer), 1), "basis": basis, "why": why}
+    if scale:
+        q["scale"] = scale
+    return q
 
 
 def choice(qid, text, options, answer, basis, why):
@@ -724,10 +729,8 @@ topic(
            "나옵니다. 강설량은 내린 양이고, 쌓인 깊이(적설)와는 다른 값입니다.")
 
 # ── 12. 콜레스테롤 ───────────────────────────────────────────────
-# 원본은 mmol/L 이고 0.1 단위로 반올림돼 있다. 건강검진표는 mg/dL 이라
-# 문항은 mg/dL 로 바꿔 묻는다 (×38.67). 0.1mmol/L ≈ 4mg/dL 이 원본의 해상도다.
+# 원본은 mmol/L 이고 0.1 단위로 반올림돼 있다. 단위를 바꾸지 않고 그대로 묻는다.
 # 한국 값은 CSV 에서 한국 행만 뽑아 둔 *_kor.json 을, 나라 비교는 CSV 를 쓴다
-MGDL = 38.67
 NONHDL = "mean_non_hdl_cholesterol__age_standardized__sex_both_sexes"
 HDL = "mean_hdl_cholesterol__age_standardized__sex_both_sexes"
 k_nh = {r["year"]: r["value"] for r in load_json("chol_non_hdl_kor.json")["rows"]}
@@ -753,9 +756,11 @@ h_four = {c: h_cur[c] for c in ("South Korea", "Japan", "United States", "German
 h_four_top = max(h_four, key=h_four.get)
 for _d, _t in ((nh_four, nh_four_top), (h_four, h_four_top)):
     assert sum(1 for v in _d.values() if v == _d[_t]) == 1, "보기 중 최댓값이 겹칩니다"
-de_drop = (nh_old["Germany"] - nh_cur["Germany"]) * MGDL
-trend = ("크게 올랐다" if nh_diff > 0.3 else "조금 올랐다" if nh_diff > 0.05
-         else "거의 같거나 조금 내렸다" if nh_diff >= -0.3 else "크게 내렸다")
+de_old, de_new = nh_old["Germany"], nh_cur["Germany"]
+# 보기 나라는 감이 틀리기 쉬운 조합으로 골랐다 — ch3 은 서양 셋과 동남아 하나,
+# ch5 는 한국과 가까운 일본 · 서양 둘
+NH_PICK = "서양 셋과 동남아 하나를 맞세운 보기"
+H_PICK = "한국 · 일본과 서양 둘을 맞세운 보기"
 
 topic(
     "cholesterol", "🩸", "콜레스테롤, 한국은 어디쯤",
@@ -763,44 +768,52 @@ topic(
     "Our World in Data (NCD-RisC 추정)",
     "https://ourworldindata.org/grapher/average-non-hdl-cholesterol-levels",
     [
-        slider("ch1", f"{ch_y1}년 한국 성인의 평균 비-HDL 콜레스테롤은 몇 mg/dL일까요?",
-               kor_nh * MGDL, "mg/dL", 50, 250, 5,
-               f"{ch_y1}년 한국 {kor_nh}mmol/L ≈ {kor_nh * MGDL:.0f}mg/dL "
-               f"(연령표준화 · 비-HDL = 총콜레스테롤 − HDL)",
-               "건강검진표의 '총콜레스테롤 200'이 기준점이 되어 높게 잡기 쉽습니다. "
-               "비-HDL은 총콜레스테롤에서 좋은 콜레스테롤을 뺀 값입니다."),
-        choice("ch2", f"{ch_y0}년과 비교해 {ch_y1}년 한국의 평균 비-HDL 콜레스테롤은?",
-               ["크게 올랐다", "조금 올랐다", "거의 같거나 조금 내렸다", "크게 내렸다"],
-               trend,
-               f"{ch_y0}년 {k_nh[ch_y0]}mmol/L → {ch_y1}년 {kor_nh}mmol/L "
-               f"({nh_diff * MGDL:+.0f}mg/dL)",
+        slider("ch1", f"{ch_y1}년 한국 성인의 평균 비-HDL 콜레스테롤(연령표준화)은 "
+                      "몇 mmol/L일까요?",
+               kor_nh, "mmol/L", 2.0, 5.0, 0.1,
+               f"{ch_y1}년 한국 성인 연령표준화 평균 비-HDL 콜레스테롤을 원본 그대로 "
+               f"읽으면 {kor_nh}mmol/L입니다.",
+               "비-HDL은 총콜레스테롤에서 좋은 콜레스테롤(HDL)을 뺀 값입니다. "
+               "익숙하지 않은 단위라 감이 크게 흔들립니다."),
+        slider("ch2", f"{ch_y0}년부터 {ch_y1}년까지 한국 성인의 평균 비-HDL "
+                      "콜레스테롤(연령표준화)은 몇 mmol/L 변했을까요? (내려갔으면 −)",
+               nh_diff, "mmol/L", -1.0, 1.0, 0.1,
+               f"연령표준화 평균 비-HDL에서 {ch_y1}년 값 {kor_nh}mmol/L 빼기 "
+               f"{ch_y0}년 값 {k_nh[ch_y0]}mmol/L는 {nh_diff:+.1f}mmol/L입니다.",
                "식생활이 서구화됐으니 올랐을 거라 생각하기 쉽지만, 평균값은 "
-               "30년 가까이 거의 움직이지 않았습니다."),
-        choice("ch3", f"{ch_y1}년 평균 비-HDL 콜레스테롤이 가장 높은 나라는?",
+               "30년 가까이 거의 움직이지 않았습니다.",
+               scale="range"),
+        choice("ch3", f"{ch_y1}년 성인 평균 비-HDL 콜레스테롤(연령표준화)이 "
+                      "가장 높은 나라는?",
                [ch_ko[c] for c in nh_four], ch_ko[nh_four_top],
-               " · ".join(f"{ch_ko[c]} {v}mmol/L" for c, v in nh_four.items())
-               + f" ({len(nh_cur)}개국 중 1위는 {ch_ko.get(nh_top, nh_top)} "
-               f"{nh_cur[nh_top]}). "
-               f"독일은 {ch_y0}년보다 약 {de_drop:.0f}mg/dL 내려갔습니다",
-               "기름진 식단의 서양이 가장 높을 것 같지만, 서유럽은 30년 사이 크게 "
-               "내려갔고 지금 가장 높은 곳은 동남아시아입니다."),
-        slider("ch4", f"{ch_y1}년 평균 비-HDL 콜레스테롤이 한국보다 높은 나라는 "
-                      f"{len(nh_cur)}개국 중 몇 곳일까요?",
+               f"{ch_y1}년 연령표준화 평균 비-HDL을 {NH_PICK} 네 나라끼리 견주면 "
+               + " · ".join(f"{ch_ko[c]} {v}" for c, v in nh_four.items())
+               + f"mmol/L로, 가장 높은 나라는 {ch_ko[nh_four_top]}입니다"
+               f"({len(nh_cur)}개국 전체 1위는 {ch_ko.get(nh_top, nh_top)} "
+               f"{nh_cur[nh_top]}).",
+               f"기름진 식단의 서양이 가장 높을 것 같지만, 독일은 {ch_y0}년 {de_old}에서 "
+               f"{ch_y1}년 {de_new}mmol/L로 내려갔고 지금 가장 높은 곳은 동남아시아입니다."),
+        slider("ch4", f"{ch_y1}년 성인 평균 비-HDL 콜레스테롤(연령표준화)이 한국보다 "
+                      f"높은 나라는 {len(nh_cur)}개국 중 몇 곳일까요? (같은 값은 세지 않음)",
                nh_higher, "곳", 0, 190, 5,
-               f"{ch_y1}년 한국 {kor_nh}mmol/L보다 높은 나라 {nh_higher}곳 "
-               f"(같은 값 {nh_same}곳은 세지 않음)",
+               f"{ch_y1}년 연령표준화 평균 비-HDL이 한국({kor_nh}mmol/L)보다 큰 나라를 "
+               f"{len(nh_cur)}개국에서 세면 {nh_higher}곳이고, 같은 값인 {nh_same}곳은 "
+               "세지 않았습니다.",
                "'한국인 콜레스테롤이 높다'는 뉴스가 익숙하지만, 세계 안에서는 "
                "한가운데쯤입니다."),
-        choice("ch5", f"{ch_y1}년 '좋은 콜레스테롤'(HDL) 평균이 가장 높은 나라는?",
+        choice("ch5", f"{ch_y1}년 성인 평균 HDL('좋은 콜레스테롤', 연령표준화)이 "
+                      "가장 높은 나라는?",
                [ch_ko[c] for c in h_four], ch_ko[h_four_top],
-               " · ".join(f"{ch_ko[c]} {v}mmol/L" for c, v in h_four.items())
-               + f" (한국은 {ch_y0}년 {k_h[ch_y0]} → {ch_y1}년 {k_h[ch_y1]})",
-               "콜레스테롤은 낮을수록 좋다고만 알기 쉽지만, HDL은 높을수록 "
-               "좋은 쪽입니다."),
+               f"{ch_y1}년 연령표준화 평균 HDL을 {H_PICK} 네 나라끼리 견주면 "
+               + " · ".join(f"{ch_ko[c]} {v}" for c, v in h_four.items())
+               + f"mmol/L로, 가장 높은 나라는 {ch_ko[h_four_top]}입니다.",
+               f"콜레스테롤은 낮을수록 좋다고만 알기 쉽지만, HDL은 높을수록 좋은 "
+               f"쪽입니다. 한국도 {ch_y0}년 {k_h[ch_y0]}에서 {ch_y1}년 {k_h[ch_y1]}"
+               "mmol/L로 올랐습니다."),
     ],
     caveat="고지혈증 유병률(%)이 아니라 성인 평균 콜레스테롤 수치입니다. "
            "여러 나라 조사를 모아 만든 NCD-RisC의 추정치이고, 원본은 0.1mmol/L "
-           f"(약 4mg/dL) 단위로 반올림돼 있으며 {ch_y1}년까지만 있습니다.")
+           f"단위로 반올림돼 있으며 {ch_y1}년까지만 있습니다.")
 
 
 # ════════════════════════════════════════════════════════════════

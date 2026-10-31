@@ -11,6 +11,7 @@ let INDEX = null;     // topics.json
 let PACK = null;      // 지금 푸는 주제
 let idx = 0;
 let answers = [];
+let TAB = null;       // 첫 화면에서 보고 있는 탭 id
 
 const DONE_KEY = "gam-test-done";
 
@@ -86,6 +87,10 @@ async function boot() {
     $("shared-banner").hidden = false;
   }
 
+  // 공유 링크로 들어오면 그 주제가 있는 탭부터 연다
+  const linked = INDEX.topics.find((x) => x.id === p.get("t"));
+  TAB = (linked && linked.tab) || INDEX.tabs[0].id;
+
   renderGrid();
   $("btn-next").onclick = next;
   $("btn-back").onclick = () => show("home");
@@ -97,13 +102,33 @@ async function boot() {
   }
 }
 
+function renderTabs() {
+  const box = $("tabs");
+  box.innerHTML = "";
+  INDEX.tabs.forEach((tab) => {
+    const b = document.createElement("button");
+    b.className = "tab";
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", String(tab.id === TAB));
+    b.textContent = tab.name;
+    b.onclick = () => {
+      if (tab.soon) { alert("곧 추가 예정입니다"); return; }
+      TAB = tab.id; renderGrid();
+    };
+    box.appendChild(b);
+  });
+}
+
 function renderGrid() {
+  renderTabs();
   const done = doneMap();
-  const n = INDEX.topics.filter((t) => t.id in done).length;
+  const list = INDEX.topics.filter((t) => t.tab === TAB);
+  const n = list.filter((t) => t.id in done).length;
   $("progress-note").textContent =
-    n ? `${INDEX.topics.length}개 중 ${n}개 풀었습니다` : "";
+    n ? `${list.length}개 중 ${n}개 풀었습니다` : "";
   $("topic-grid").innerHTML = "";
-  INDEX.topics.forEach((t) => {
+  list.forEach((t) => {
     const b = document.createElement("button");
     b.className = "tcard" + (t.id in done ? " done" : "");
     b.innerHTML =

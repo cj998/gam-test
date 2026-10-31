@@ -34,6 +34,22 @@ OUT = APP / "topics"
 
 TOPICS: list[dict] = []
 
+# 첫 화면의 탭. 새 주제를 만들면 TAB_OF 에 어느 탭인지 적는다 (안 적으면 빌드가 멈춘다)
+TABS = [
+    {"id": "env", "name": "환경"},
+    {"id": "society", "name": "사회"},
+    {"id": "economy", "name": "경제"},
+    # soon = 아직 테스트가 없는 탭. 누르면 «곧 추가 예정» 알림만 뜬다.
+    # 테스트를 넣을 때는 soon 을 지우고 TAB_OF 에 주제를 적는다
+    {"id": "health", "name": "건강", "soon": True},
+]
+TAB_OF = {
+    "seoul-heat": "env", "seoul-rain": "env", "seoul-air": "env",
+    "seoul-snow": "env", "cities": "env", "quakes": "env",
+    "population": "society", "internet": "society", "life": "society",
+    "usdkrw": "economy", "working-hours": "economy",
+}
+
 
 def load_json(name):
     return json.load(io.open(RAW / name, encoding="utf-8"))
@@ -718,8 +734,10 @@ def main() -> None:
         pack["questions"] = t["questions"]
         io.open(OUT / f"{t['id']}.json", "w", encoding="utf-8").write(
             json.dumps(pack, ensure_ascii=False, indent=2))
-        index.append({k: t[k] for k in ("id", "emoji", "title", "blurb",
-                                        "source")})
+        assert t["id"] in TAB_OF, f"{t['id']}: 탭이 정해지지 않았습니다"
+        index.append({**{k: t[k] for k in ("id", "emoji", "title", "blurb",
+                                           "source")},
+                      "tab": TAB_OF[t["id"]]})
 
     # 제목·부제는 화면을 바꾸며 고친 값을 지킨다 (2장에서 내 제목으로 바꾼다).
     # 다시 계산해도 내 제목이 «감 테스트»로 돌아가지 않게, 있던 값을 읽어 쓴다
@@ -747,6 +765,7 @@ def main() -> None:
             {"max": 60, "text": "음…"},
             {"max": 999, "text": "꽤 멀리 가셨습니다"},
         ],
+        "tabs": TABS,
         "topics": index,
     }, ensure_ascii=False, indent=2))
 

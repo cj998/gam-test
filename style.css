@@ -231,6 +231,15 @@ details[open] summary::after { content: " ▴"; }
   padding: 0 0 12px; font-size: 13px; font-weight: 500; text-align: left;
 }
 
+/* ── 탭: 환경 / 사회 / 경제 ───────────────────── */
+.tabs { display: flex; border-bottom: 2px solid var(--ink); margin: 0 0 16px; }
+.tab {
+  flex: 1; background: none; color: var(--muted); border: 0;
+  border-bottom: 4px solid transparent; margin-bottom: -2px;
+  padding: 12px 6px; font-size: 16px; font-weight: 500; border-radius: 0;
+}
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 700; }
+
 /* ── 이 데이터의 한계 ─────────────────────────── */
 .caveat {
   border: 1px dashed var(--warn); border-radius: var(--radius);
